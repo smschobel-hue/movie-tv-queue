@@ -116,6 +116,8 @@ export default function Home() {
 
     setService("");
 
+    setAddedBy("");
+
   }
 
   function removeItem(id) {
@@ -150,7 +152,19 @@ export default function Home() {
 
         <form onSubmit={addItem} style={styles.form}>
 
-          <input
+<input
+
+  style={styles.input}
+
+  type="text"
+
+  placeholder="Your name"
+
+  value={addedBy}
+
+  onChange={(event) => setAddedBy(event.target.value)}
+
+/>          <input
 
             style={styles.input}
 
