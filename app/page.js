@@ -54,13 +54,25 @@ export default function Home() {
 
   const [addedBy, setAddedBy] = useState("");
 
+  // Load saved queue and saved user name
+
   useEffect(() => {
 
     const savedQueue = localStorage.getItem("movie-tv-queue");
 
+    const savedName = localStorage.getItem("movie-tv-user-name");
+
     if (savedQueue) {
 
-      setQueue(JSON.parse(savedQueue));
+      try {
+
+        setQueue(JSON.parse(savedQueue));
+
+      } catch {
+
+        setQueue(starterQueue);
+
+      }
 
     } else {
 
@@ -68,9 +80,17 @@ export default function Home() {
 
     }
 
+    if (savedName) {
+
+      setAddedBy(savedName);
+
+    }
+
     setLoaded(true);
 
   }, []);
+
+  // Save queue whenever it changes
 
   useEffect(() => {
 
@@ -82,11 +102,33 @@ export default function Home() {
 
   }, [queue, loaded]);
 
+  // Save the user's name on this device
+
+  useEffect(() => {
+
+    if (loaded && addedBy.trim()) {
+
+      localStorage.setItem("movie-tv-user-name", addedBy.trim());
+
+    }
+
+  }, [addedBy, loaded]);
+
   function addItem(event) {
 
     event.preventDefault();
 
-    if (!title.trim() || !addedBy.trim()) {
+    if (!addedBy.trim()) {
+
+      alert("Please enter your name.");
+
+      return;
+
+    }
+
+    if (!title.trim()) {
+
+      alert("Please enter a movie or TV title.");
 
       return;
 
@@ -110,13 +152,15 @@ export default function Home() {
 
     setQueue((currentQueue) => [newItem, ...currentQueue]);
 
+    // Clear title information, but keep the person's name
+
     setTitle("");
+
+    setType("Movie");
 
     setYear("");
 
     setService("");
-
-    setAddedBy("");
 
   }
 
@@ -152,19 +196,21 @@ export default function Home() {
 
         <form onSubmit={addItem} style={styles.form}>
 
-<input
+          <input
 
-  style={styles.input}
+            style={styles.input}
 
-  type="text"
+            type="text"
 
-  placeholder="Your name"
+            placeholder="Your name"
 
-  value={addedBy}
+            value={addedBy}
 
-  onChange={(event) => setAddedBy(event.target.value)}
+            onChange={(event) => setAddedBy(event.target.value)}
 
-/>          <input
+          />
+
+          <input
 
             style={styles.input}
 
@@ -219,20 +265,6 @@ export default function Home() {
             value={service}
 
             onChange={(event) => setService(event.target.value)}
-
-          />
-
-          <input
-
-            style={styles.input}
-
-            type="text"
-
-            placeholder="Your name"
-
-            value={addedBy}
-
-            onChange={(event) => setAddedBy(event.target.value)}
 
           />
 
@@ -292,7 +324,7 @@ export default function Home() {
 
                   <div style={styles.addedBy}>
 
-                    Added by: {item.addedBy}
+                    Added by: {item.addedBy || "Unknown"}
 
                   </div>
 
