@@ -2,42 +2,6 @@
 
 import { useEffect, useState } from "react";
 
-const starterQueue = [
-
-  {
-
-    id: 1,
-
-    title: "The Godfather",
-
-    type: "Movie",
-
-    year: "1972",
-
-    service: "Paramount+",
-
-    addedBy: "Steve",
-
-  },
-
-  {
-
-    id: 2,
-
-    title: "Breaking Bad",
-
-    type: "TV",
-
-    year: "2008",
-
-    service: "Netflix",
-
-    addedBy: "Steve",
-
-  },
-
-];
-
 export default function Home() {
 
   const [queue, setQueue] = useState([]);
@@ -54,31 +18,41 @@ export default function Home() {
 
   const [addedBy, setAddedBy] = useState("");
 
-  // Load saved queue and saved user name
+  // Load the shared queue from Neon
 
   useEffect(() => {
 
-    const savedQueue = localStorage.getItem("movie-tv-queue");
-
-    const savedName = localStorage.getItem("movie-tv-user-name");
-
-    if (savedQueue) {
+    async function loadQueue() {
 
       try {
 
-        setQueue(JSON.parse(savedQueue));
+        const response = await fetch("/api/queue");
 
-      } catch {
+        if (!response.ok) {
 
-        setQueue(starterQueue);
+          throw new Error("Unable to load queue");
+
+        }
+
+        const data = await response.json();
+
+        setQueue(data);
+
+      } catch (error) {
+
+        console.error("Error loading queue:", error);
+
+      } finally {
+
+        setLoaded(true);
 
       }
 
-    } else {
-
-      setQueue(starterQueue);
-
     }
+
+    // Keep each person's name saved on their own device
+
+    const savedName = localStorage.getItem("movie-tv-user-name");
 
     if (savedName) {
 
@@ -86,480 +60,312 @@ export default function Home() {
 
     }
 
-    setLoaded(true);
+    loadQueue();
 
   }, []);
 
-  // Save queue whenever it changes
+  // Save user name on this device
 
   useEffect(() => {
 
-    if (loaded) {
+    if (addedBy) {
 
-      localStorage.setItem("movie-tv-queue", JSON.stringify(queue));
-
-    }
-
-  }, [queue, loaded]);
-
-  // Save the user's name on this device
-
-  useEffect(() => {
-
-    if (loaded && addedBy.trim()) {
-
-      localStorage.setItem("movie-tv-user-name", addedBy.trim());
+      localStorage.setItem("movie-tv-user-name", addedBy);
 
     }
 
-  }, [addedBy, loaded]);
+  }, [addedBy]);
 
-  function addItem(event) {
+  async function addItem(e) {
 
-    event.preventDefault();
+    e.preventDefault();
 
-    if (!addedBy.trim()) {
-
-      alert("Please enter your name.");
+    if (!title.trim() || !addedBy.trim()) {
 
       return;
 
     }
 
-    if (!title.trim()) {
+    try {
 
-      alert("Please enter a movie or TV title.");
+      const response = await fetch("/api/queue", {
 
-      return;
+        method: "POST",
+
+        headers: {
+
+          "Content-Type": "application/json",
+
+        },
+
+        body: JSON.stringify({
+
+          title: title.trim(),
+
+          type,
+
+          year: year.trim(),
+
+          service: service.trim(),
+
+          addedBy: addedBy.trim(),
+
+        }),
+
+      });
+
+      if (!response.ok) {
+
+        throw new Error("Unable to add item");
+
+      }
+
+      const newItem = await response.json();
+
+      // Newest item appears first
+
+      setQueue((currentQueue) => [newItem, ...currentQueue]);
+
+      setTitle("");
+
+      setYear("");
+
+      setService("");
+
+    } catch (error) {
+
+      console.error("Error adding item:", error);
+
+      alert("The item could not be added. Please try again.");
 
     }
-
-    const newItem = {
-
-      id: Date.now(),
-
-      title: title.trim(),
-
-      type,
-
-      year: year.trim(),
-
-      service: service.trim(),
-
-      addedBy: addedBy.trim(),
-
-    };
-
-    setQueue((currentQueue) => [newItem, ...currentQueue]);
-
-    // Clear title information, but keep the person's name
-
-    setTitle("");
-
-    setType("Movie");
-
-    setYear("");
-
-    setService("");
-
-  }
-
-  function removeItem(id) {
-
-    setQueue((currentQueue) =>
-
-      currentQueue.filter((item) => item.id !== id)
-
-    );
-
-  }
-
-  if (!loaded) {
-
-    return null;
 
   }
 
   return (
 
-    <main style={styles.page}>
+    <main
 
-      <div style={styles.container}>
+      style={{
 
-        <h1 style={styles.heading}>🎬 Movie & TV Queue</h1>
+        maxWidth: "700px",
 
-        <p style={styles.subtitle}>
+        margin: "40px auto",
 
-          Add movies and TV shows everyone wants to watch.
+        padding: "20px",
 
-        </p>
+        fontFamily: "Arial, sans-serif",
 
-        <form onSubmit={addItem} style={styles.form}>
+      }}
 
-          <input
+    >
 
-            style={styles.input}
+      <h1>Movie & TV Queue</h1>
 
-            type="text"
+      <form onSubmit={addItem}>
 
-            placeholder="Your name"
+        <div style={{ marginBottom: "12px" }}>
 
-            value={addedBy}
+          <label>
 
-            onChange={(event) => setAddedBy(event.target.value)}
+            Your name
 
-          />
+            <br />
 
-          <input
+            <input
 
-            style={styles.input}
+              value={addedBy}
 
-            type="text"
+              onChange={(e) => setAddedBy(e.target.value)}
 
-            placeholder="Movie or TV title"
+              placeholder="Your name"
 
-            value={title}
+              style={{ width: "100%", padding: "8px" }}
 
-            onChange={(event) => setTitle(event.target.value)}
+            />
 
-          />
+          </label>
 
-          <select
+        </div>
 
-            style={styles.input}
+        <div style={{ marginBottom: "12px" }}>
 
-            value={type}
+          <label>
 
-            onChange={(event) => setType(event.target.value)}
+            Title
+
+            <br />
+
+            <input
+
+              value={title}
+
+              onChange={(e) => setTitle(e.target.value)}
+
+              placeholder="Movie or TV title"
+
+              style={{ width: "100%", padding: "8px" }}
+
+            />
+
+          </label>
+
+        </div>
+
+        <div style={{ marginBottom: "12px" }}>
+
+          <label>
+
+            Type
+
+            <br />
+
+            <select
+
+              value={type}
+
+              onChange={(e) => setType(e.target.value)}
+
+              style={{ width: "100%", padding: "8px" }}
+
+            >
+
+              <option value="Movie">Movie</option>
+
+              <option value="TV">TV</option>
+
+            </select>
+
+          </label>
+
+        </div>
+
+        <div style={{ marginBottom: "12px" }}>
+
+          <label>
+
+            Release year
+
+            <br />
+
+            <input
+
+              value={year}
+
+              onChange={(e) => setYear(e.target.value)}
+
+              placeholder="2026"
+
+              style={{ width: "100%", padding: "8px" }}
+
+            />
+
+          </label>
+
+        </div>
+
+        <div style={{ marginBottom: "12px" }}>
+
+          <label>
+
+            Streaming service
+
+            <br />
+
+            <input
+
+              value={service}
+
+              onChange={(e) => setService(e.target.value)}
+
+              placeholder="Netflix, Prime Video, etc."
+
+              style={{ width: "100%", padding: "8px" }}
+
+            />
+
+          </label>
+
+        </div>
+
+        <button
+
+          type="submit"
+
+          style={{
+
+            padding: "10px 18px",
+
+            fontSize: "16px",
+
+            cursor: "pointer",
+
+          }}
+
+        >
+
+          Add to Queue
+
+        </button>
+
+      </form>
+
+      <hr style={{ margin: "30px 0" }} />
+
+      <h2>Queue</h2>
+
+      {!loaded ? (
+
+        <p>Loading queue...</p>
+
+      ) : queue.length === 0 ? (
+
+        <p>No movies or TV shows in the queue yet.</p>
+
+      ) : (
+
+        queue.map((item) => (
+
+          <div
+
+            key={item.id}
+
+            style={{
+
+              border: "1px solid #ccc",
+
+              borderRadius: "8px",
+
+              padding: "14px",
+
+              marginBottom: "12px",
+
+            }}
 
           >
 
-            <option value="Movie">Movie</option>
+            <h3 style={{ margin: "0 0 8px 0" }}>{item.title}</h3>
 
-            <option value="TV">TV Series</option>
+            <div>
 
-          </select>
+              {item.type}
 
-          <input
+              {item.year ? ` • ${item.year}` : ""}
 
-            style={styles.input}
+            </div>
 
-            type="text"
+            {item.service && <div>Streaming: {item.service}</div>}
 
-            placeholder="Year (optional)"
-
-            value={year}
-
-            onChange={(event) => setYear(event.target.value)}
-
-          />
-
-          <input
-
-            style={styles.input}
-
-            type="text"
-
-            placeholder="Where to watch (optional)"
-
-            value={service}
-
-            onChange={(event) => setService(event.target.value)}
-
-          />
-
-          <button style={styles.addButton} type="submit">
-
-            Add to Queue
-
-          </button>
-
-        </form>
-
-        <h2 style={styles.queueHeading}>
-
-          Watch Queue ({queue.length})
-
-        </h2>
-
-        {queue.length === 0 ? (
-
-          <div style={styles.empty}>
-
-            The queue is empty. Add something to watch!
+            <div>Added by: {item.addedBy}</div>
 
           </div>
 
-        ) : (
+        ))
 
-          <div style={styles.queue}>
-
-            {queue.map((item, index) => (
-
-              <div key={item.id} style={styles.card}>
-
-                <div style={styles.number}>{index + 1}</div>
-
-                <div style={styles.details}>
-
-                  <h3 style={styles.title}>{item.title}</h3>
-
-                  <div style={styles.meta}>
-
-                    {item.type}
-
-                    {item.year ? ` • ${item.year}` : ""}
-
-                  </div>
-
-                  {item.service && (
-
-                    <div style={styles.service}>
-
-                      Watch on: {item.service}
-
-                    </div>
-
-                  )}
-
-                  <div style={styles.addedBy}>
-
-                    Added by: {item.addedBy || "Unknown"}
-
-                  </div>
-
-                </div>
-
-                <button
-
-                  style={styles.removeButton}
-
-                  onClick={() => removeItem(item.id)}
-
-                >
-
-                  Remove
-
-                </button>
-
-              </div>
-
-            ))}
-
-          </div>
-
-        )}
-
-      </div>
+      )}
 
     </main>
 
   );
 
 }
-
-const styles = {
-
-  page: {
-
-    minHeight: "100vh",
-
-    background: "#f4f6f8",
-
-    padding: "30px 16px",
-
-    fontFamily: "Arial, sans-serif",
-
-  },
-
-  container: {
-
-    maxWidth: "850px",
-
-    margin: "0 auto",
-
-  },
-
-  heading: {
-
-    marginBottom: "5px",
-
-    fontSize: "36px",
-
-  },
-
-  subtitle: {
-
-    marginTop: "0",
-
-    marginBottom: "25px",
-
-    fontSize: "18px",
-
-  },
-
-  form: {
-
-    background: "white",
-
-    padding: "20px",
-
-    borderRadius: "12px",
-
-    marginBottom: "30px",
-
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-
-    display: "grid",
-
-    gap: "12px",
-
-  },
-
-  input: {
-
-    padding: "14px",
-
-    fontSize: "17px",
-
-    borderRadius: "8px",
-
-    border: "1px solid #bbb",
-
-  },
-
-  addButton: {
-
-    padding: "14px",
-
-    fontSize: "18px",
-
-    fontWeight: "bold",
-
-    border: "none",
-
-    borderRadius: "8px",
-
-    background: "#1677ff",
-
-    color: "white",
-
-    cursor: "pointer",
-
-  },
-
-  queueHeading: {
-
-    fontSize: "26px",
-
-  },
-
-  queue: {
-
-    display: "grid",
-
-    gap: "14px",
-
-  },
-
-  card: {
-
-    background: "white",
-
-    padding: "18px",
-
-    borderRadius: "12px",
-
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-
-    display: "flex",
-
-    alignItems: "center",
-
-    gap: "16px",
-
-  },
-
-  number: {
-
-    fontSize: "24px",
-
-    fontWeight: "bold",
-
-    minWidth: "30px",
-
-  },
-
-  details: {
-
-    flex: 1,
-
-  },
-
-  title: {
-
-    margin: "0 0 6px 0",
-
-    fontSize: "22px",
-
-  },
-
-  meta: {
-
-    fontSize: "16px",
-
-    color: "#555",
-
-    marginBottom: "5px",
-
-  },
-
-  service: {
-
-    fontSize: "16px",
-
-    marginBottom: "5px",
-
-  },
-
-  addedBy: {
-
-    fontSize: "15px",
-
-    fontWeight: "bold",
-
-  },
-
-  removeButton: {
-
-    padding: "10px 14px",
-
-    border: "none",
-
-    borderRadius: "7px",
-
-    background: "#d9342b",
-
-    color: "white",
-
-    fontSize: "15px",
-
-    cursor: "pointer",
-
-  },
-
-  empty: {
-
-    background: "white",
-
-    padding: "25px",
-
-    borderRadius: "12px",
-
-    textAlign: "center",
-
-    fontSize: "18px",
-
-  },
-
-};
