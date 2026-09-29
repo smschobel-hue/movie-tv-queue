@@ -4,87 +4,91 @@ import { useEffect, useState } from "react";
 
 export default function Home() {
 
-  const [queue, setQueue] = useState([]);
-
-  const [loaded, setLoaded] = useState(false);
+  const [name, setName] = useState("");
 
   const [title, setTitle] = useState("");
 
-  const [type, setType] = useState("Movie");
+  const [queue, setQueue] = useState([]);
 
-  const [year, setYear] = useState("");
+  const [message, setMessage] = useState("");
 
-  const [service, setService] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [addedBy, setAddedBy] = useState("");
-
-  // Load the shared queue from Neon
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
 
-    async function loadQueue() {
-
-      try {
-
-        const response = await fetch("/api/queue");
-
-        if (!response.ok) {
-
-          throw new Error("Unable to load queue");
-
-        }
-
-        const data = await response.json();
-
-        setQueue(data);
-
-      } catch (error) {
-
-        console.error("Error loading queue:", error);
-
-      } finally {
-
-        setLoaded(true);
-
-      }
-
-    }
-
-    // Keep each person's name saved on their own device
-
     const savedName = localStorage.getItem("movie-tv-user-name");
 
-    if (savedName) {
-
-      setAddedBy(savedName);
-
-    }
+    if (savedName) setName(savedName);
 
     loadQueue();
 
   }, []);
 
-  // Save user name on this device
+  async function loadQueue() {
 
-  useEffect(() => {
+    try {
 
-    if (addedBy) {
+      const response = await fetch("/api/queue", {
 
-      localStorage.setItem("movie-tv-user-name", addedBy);
+        cache: "no-store",
+
+      });
+
+      if (!response.ok) {
+
+        throw new Error("Unable to load queue");
+
+      }
+
+      const data = await response.json();
+
+      setQueue(Array.isArray(data) ? data : data.items || []);
+
+    } catch (error) {
+
+      console.error(error);
+
+      setMessage("Unable to load the shared queue.");
 
     }
 
-  }, [addedBy]);
+  }
 
-  async function addItem(e) {
+  function handleNameChange(event) {
 
-    e.preventDefault();
+    const value = event.target.value;
 
-    if (!title.trim() || !addedBy.trim()) {
+    setName(value);
+
+    localStorage.setItem("movie-tv-user-name", value);
+
+  }
+
+  async function handleSubmit(event) {
+
+    event.preventDefault();
+
+    if (!name.trim()) {
+
+      setMessage("Please enter your name first.");
 
       return;
 
     }
+
+    if (!title.trim()) {
+
+      setMessage("Please enter a movie or TV series title.");
+
+      return;
+
+    }
+
+    setLoading(true);
+
+    setMessage("");
 
     try {
 
@@ -102,45 +106,75 @@ export default function Home() {
 
           title: title.trim(),
 
-          type,
-
-          year: year.trim(),
-
-          service: service.trim(),
-
-          addedBy: addedBy.trim(),
+          addedBy: name.trim(),
 
         }),
 
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
 
-        throw new Error("Unable to add item");
+        throw new Error(data.error || "Unable to add title");
 
       }
 
-      const newItem = await response.json();
+      /*
 
-      // Newest item appears first
+        If the API finds more than one possible match
 
-      setQueue((currentQueue) => [newItem, ...currentQueue]);
+        (for example a movie and TV series with the same name),
+
+        it can return:
+
+        {
+
+          needsSelection: true,
+
+          matches: [...]
+
+        }
+
+        We will build the selection screen next.
+
+      */
+
+      if (data.needsSelection) {
+
+        setMessage(
+
+          "More than one match was found. Selection screen coming next."
+
+        );
+
+        return;
+
+      }
 
       setTitle("");
 
-      setYear("");
+      setMessage("Added successfully.");
 
-      setService("");
+      setShowAll(false);
+
+      await loadQueue();
 
     } catch (error) {
 
-      console.error("Error adding item:", error);
+      console.error(error);
 
-      alert("The item could not be added. Please try again.");
+      setMessage(error.message || "Something went wrong.");
+
+    } finally {
+
+      setLoading(false);
 
     }
 
   }
+
+  const displayedQueue = showAll ? queue : queue.slice(0, 5);
 
   return (
 
@@ -148,11 +182,11 @@ export default function Home() {
 
       style={{
 
-        maxWidth: "700px",
+        maxWidth: "900px",
 
-        margin: "40px auto",
+        margin: "0 auto",
 
-        padding: "20px",
+        padding: "30px 20px",
 
         fontFamily: "Arial, sans-serif",
 
@@ -160,137 +194,283 @@ export default function Home() {
 
     >
 
-      <h1>Movie & TV Queue</h1>
+      <h1 style={{ marginBottom: "8px" }}>Movie & TV Queue</h1>
 
-      <form onSubmit={addItem}>
+      <p style={{ marginTop: 0, color: "#555" }}>
 
-        <div style={{ marginBottom: "12px" }}>
+        Add a movie or TV series to our shared watch list.
 
-          <label>
+      </p>
 
-            Your name
+      <div
 
-            <br />
+        style={{
 
-            <input
+          background: "#f5f5f5",
 
-              value={addedBy}
+          padding: "20px",
 
-              onChange={(e) => setAddedBy(e.target.value)}
+          borderRadius: "10px",
 
-              placeholder="Your name"
+          marginBottom: "25px",
 
-              style={{ width: "100%", padding: "8px" }}
+        }}
 
-            />
+      >
+
+        <label
+
+          style={{
+
+            display: "block",
+
+            fontWeight: "bold",
+
+            marginBottom: "6px",
+
+          }}
+
+        >
+
+          Your name
+
+        </label>
+
+        <input
+
+          type="text"
+
+          value={name}
+
+          onChange={handleNameChange}
+
+          placeholder="Enter your name"
+
+          style={{
+
+            width: "100%",
+
+            boxSizing: "border-box",
+
+            padding: "12px",
+
+            fontSize: "16px",
+
+            marginBottom: "18px",
+
+          }}
+
+        />
+
+        <form onSubmit={handleSubmit}>
+
+          <label
+
+            style={{
+
+              display: "block",
+
+              fontWeight: "bold",
+
+              marginBottom: "6px",
+
+            }}
+
+          >
+
+            Movie or TV series
 
           </label>
 
-        </div>
+          <div
 
-        <div style={{ marginBottom: "12px" }}>
+            style={{
 
-          <label>
+              display: "flex",
 
-            Title
+              gap: "10px",
 
-            <br />
+              flexWrap: "wrap",
+
+            }}
+
+          >
 
             <input
+
+              type="text"
 
               value={title}
 
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(event) => setTitle(event.target.value)}
 
-              placeholder="Movie or TV title"
+              placeholder="Enter title"
 
-              style={{ width: "100%", padding: "8px" }}
+              style={{
+
+                flex: "1 1 300px",
+
+                padding: "12px",
+
+                fontSize: "16px",
+
+              }}
 
             />
 
-          </label>
+            <button
 
-        </div>
+              type="submit"
 
-        <div style={{ marginBottom: "12px" }}>
+              disabled={loading}
 
-          <label>
+              style={{
 
-            Type
+                padding: "12px 22px",
 
-            <br />
+                fontSize: "16px",
 
-            <select
+                cursor: loading ? "default" : "pointer",
 
-              value={type}
-
-              onChange={(e) => setType(e.target.value)}
-
-              style={{ width: "100%", padding: "8px" }}
+              }}
 
             >
 
-              <option value="Movie">Movie</option>
+              {loading ? "Searching..." : "Add"}
 
-              <option value="TV">TV</option>
+            </button>
 
-            </select>
+          </div>
 
-          </label>
+        </form>
 
-        </div>
+        {message && (
 
-        <div style={{ marginBottom: "12px" }}>
+          <p
 
-          <label>
+            style={{
 
-            Release year
+              marginBottom: 0,
 
-            <br />
+              marginTop: "15px",
 
-            <input
+              fontWeight: "bold",
 
-              value={year}
+            }}
 
-              onChange={(e) => setYear(e.target.value)}
+          >
 
-              placeholder="2026"
+            {message}
 
-              style={{ width: "100%", padding: "8px" }}
+          </p>
 
-            />
+        )}
 
-          </label>
+      </div>
 
-        </div>
+      <h2>Queue</h2>
 
-        <div style={{ marginBottom: "12px" }}>
+      {displayedQueue.length === 0 ? (
 
-          <label>
+        <p>No titles have been added yet.</p>
 
-            Streaming service
+      ) : (
 
-            <br />
+        displayedQueue.map((item, index) => (
 
-            <input
+          <div
 
-              value={service}
+            key={item.id || `${item.title}-${index}`}
 
-              onChange={(e) => setService(e.target.value)}
+            style={{
 
-              placeholder="Netflix, Prime Video, etc."
+              border: "1px solid #ddd",
 
-              style={{ width: "100%", padding: "8px" }}
+              borderRadius: "10px",
 
-            />
+              padding: "16px",
 
-          </label>
+              marginBottom: "14px",
 
-        </div>
+            }}
+
+          >
+
+            <h3 style={{ marginTop: 0, marginBottom: "8px" }}>
+
+              {item.title}
+
+              {item.year ? ` (${item.year})` : ""}
+
+            </h3>
+
+            <p>
+
+              <strong>Type:</strong>{" "}
+
+              {item.type || item.titleType || "Not available"}
+
+            </p>
+
+            <p>
+
+              <strong>Streaming:</strong>{" "}
+
+              {item.streamingService ||
+
+                item.streamingServices ||
+
+                "Not available"}
+
+            </p>
+
+            <p>
+
+              <strong>IMDb:</strong>{" "}
+
+              {item.imdbRating ?? "Not available"}
+
+            </p>
+
+            <p>
+
+              <strong>Rotten Tomatoes:</strong>{" "}
+
+              {item.rottenTomatoesRating ?? "Not available"}
+
+            </p>
+
+            <p>
+
+              <strong>Cast:</strong>{" "}
+
+              {Array.isArray(item.cast)
+
+                ? item.cast.join(", ")
+
+                : item.cast || "Not available"}
+
+            </p>
+
+            <p style={{ marginBottom: 0 }}>
+
+              <strong>Added by:</strong>{" "}
+
+              {item.addedBy || "Unknown"}
+
+            </p>
+
+          </div>
+
+        ))
+
+      )}
+
+      {queue.length > 5 && (
 
         <button
 
-          type="submit"
+          onClick={() => setShowAll(!showAll)}
 
           style={{
 
@@ -304,63 +484,9 @@ export default function Home() {
 
         >
 
-          Add to Queue
+          {showAll ? "Show Less" : "Show More"}
 
         </button>
-
-      </form>
-
-      <hr style={{ margin: "30px 0" }} />
-
-      <h2>Queue</h2>
-
-      {!loaded ? (
-
-        <p>Loading queue...</p>
-
-      ) : queue.length === 0 ? (
-
-        <p>No movies or TV shows in the queue yet.</p>
-
-      ) : (
-
-        queue.map((item) => (
-
-          <div
-
-            key={item.id}
-
-            style={{
-
-              border: "1px solid #ccc",
-
-              borderRadius: "8px",
-
-              padding: "14px",
-
-              marginBottom: "12px",
-
-            }}
-
-          >
-
-            <h3 style={{ margin: "0 0 8px 0" }}>{item.title}</h3>
-
-            <div>
-
-              {item.type}
-
-              {item.year ? ` • ${item.year}` : ""}
-
-            </div>
-
-            {item.service && <div>Streaming: {item.service}</div>}
-
-            <div>Added by: {item.addedBy}</div>
-
-          </div>
-
-        ))
 
       )}
 
