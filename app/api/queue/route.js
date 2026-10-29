@@ -42,7 +42,7 @@ export async function POST(request) {
 
     const rows = await sql`
 
-      INSERT INTO queue (title, type, year, service, added_by)
+      INSERT INTO queue (title, type, release_year, service, added_by)
 
       VALUES (${title}, ${type}, ${year}, ${service}, ${addedBy})
 
