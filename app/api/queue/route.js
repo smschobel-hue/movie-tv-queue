@@ -42,9 +42,35 @@ export async function POST(request) {
 
     const rows = await sql`
 
-      INSERT INTO queue (title, type, release_year, service, added_by)
+      INSERT INTO queue (
 
-      VALUES (${title}, ${type}, ${year}, ${service}, ${addedBy})
+  title,
+
+  type,
+
+  release_year,
+
+  streaming_service,
+
+  imdb_rating,
+
+  rotten_tomatoes_rating,
+
+  cast_members,
+
+  added_by
+
+)
+
+VALUES (
+
+  $1, $2, $3, $4,
+
+  $5, $6, $7, $8
+
+)
+
+RETURNING *;
 
       RETURNING *
 
