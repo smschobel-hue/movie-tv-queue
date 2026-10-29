@@ -72,10 +72,6 @@ VALUES (
 
 RETURNING *;
 
-      RETURNING *
-
-    `;
-
     return Response.json(rows[0], { status: 201 });
 
   } catch (error) {
