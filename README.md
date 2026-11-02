@@ -1,79 +1,44 @@
-# Movie & TV Queue v1.0.0-rc.2
+# Movie & TV Queue v1.0.0-rc.3
 
-Release candidate — October 30, 2026. Complete replacements for the changed files,
-plus schema migration, icons, requirements traceability, and acceptance checks.
-Not yet accepted or deployed. Original ZIP is preserved unchanged.
+Development candidate based on RC.2 commit `001e6829e3eb136b7740490f33377fba6cf1338f`.
+No live migration, enrichment or production release is part of this implementation.
 
-## Compared with the October 29 two-file ZIP
+## Changes — newest first
 
-- Retained the correct original queue import: ../../../lib/db (root-level lib/db.js).
-  Initial review incorrectly flagged this path; production compilation corrected that assessment.
-- Added database-enforced duplicate protection, including concurrent additions.
-- Added approved shared removal with confirmation and timestamps.
-- Removed watched status per approved change; entries remain indefinitely until removed.
-- Added saved-title search across the entire queue before applying five/all display.
-- Added Neon name storage with an opaque HttpOnly browser cookie; removed localStorage.
-- Retained title search/confirmation, canonical metadata, US streaming, and ratings.
-- Sorts by creation time with ID tie-breaker; shows five first and all on Show More.
-- Added automatic shared-list refresh on focus and every 30 seconds.
-- Added request validation, origin checks, external-fetch timeouts, and error handling.
-- Added full database helper, root layout, migration, home-screen assets, and release headers.
+- **RC.3, November 2, 2026:** RC2-DEF-001/002 introduces a shared server-side OMDb ratings client, fixed-code sanitized diagnostics and expanded contract tests. RC2-DEF-003 wires custom-artwork derivatives into favicon, Apple touch metadata and the PWA manifest while preserving `app/Icon.png` exactly. RC2-GAP-001 adds an operator-only, bounded dry-run/approved-plan enrichment CLI. RC2-ENH-001 adds a separately labelled TMDB score/count and nullable additive schema.
+- **RC.2, October 30–November 1:** saved names in Neon, canonical TMDB title selection, duplicate protection, shared manual removal, saved-title search, timestamps, five/all display, refresh polling, profile outage recovery, and scoped PostCSS 8.5.32 security override.
+- **RC.1 / earlier:** initial shared queue and release packaging. Original RC.2 reference and acceptance evidence remain in REQUIREMENTS.md and docs/RC3-PLAN.md.
 
-Approved removal/history/search policies are recorded in REQUIREMENTS.md.
+## Local verification
 
-## Installation in the existing GitHub repository
+Use Node.js 22 or 24. Run `npm ci`, `npm test`, `npm run build`, and `npm audit`. Tests use mocks and embedded PostgreSQL/PGlite only, never a live DATABASE_URL. Production-mode compilation can run without credentials. `npm run icons:generate` deterministically creates icon derivatives using sharp and verifies the immutable original hash first.
 
-1. Create a review branch from the current main branch and retain the previous commit for rollback.
-2. Download/extract this package. Copy app/, lib/, public/, db/, tests/, REQUIREMENTS.md,
-   ACCEPTANCE.md, VALIDATION.md, SHA256SUMS.txt, .env.example, .gitignore, and this README into the repository. These are complete replacement files.
-   Do not delete other repository files or upload the ZIP as application code.
-3. Reconcile package.json with the repository and include this candidate’s updated package-lock.json. The runtime dependency ranges are unchanged; this candidate adds npm test and development-only PGlite and React test-renderer dependencies. Run npm ci to reproduce the tested install. The repository currently has no lockfile. The project needs next, react, react-dom,
-   and @neondatabase/serverless. If the Neon package is absent, run
-   `npm install @neondatabase/serverless` and commit package.json and its lockfile.
-   Validation dependency versions, when available, are recorded in VALIDATION.md;
-   this package does not silently replace the repository's dependency baseline.
-4. Before migration, make a Neon branch/snapshot. Run db/001_v1.sql in Neon SQL Editor
-   against the database intended for this deployment. It adds columns/indexes/table;
-   it does not delete or rewrite existing queue entries. Run once before deploying.
-5. If a unique-index error stops the transaction, run ROLLBACK, inspect duplicate groups
-   using db/check_duplicates.sql, and resolve them deliberately before retrying.
-   No automatic deletion of duplicates is included.
-6. In Vercel set server-only DATABASE_URL, TMDB_READ_ACCESS_TOKEN, and OMDB_API_KEY
-   for the intended environment. Use .env.example only as a list of variable names.
-   Do not commit real .env files. TMDB is required for search; OMDb is optional but
-   without it IMDb/Rotten Tomatoes will show Not available.
-7. Run `npm ci`, `npm test`, `npm run build`, and the
-   acceptance checks in ACCEPTANCE.md on a Vercel preview. Review and merge only
-   after acceptance, then test the production deployment.
-8. On iPhone/iPad open the HTTPS URL in Safari, use Share → Add to Home Screen,
-   and open the icon. Home-screen launch is supported; offline use is not implemented.
+## Preview configuration and release gate
 
-## Database compatibility and rollback
+Required server secrets: `DATABASE_URL` for the intended isolated branch and `TMDB_READ_ACCESS_TOKEN`. `OMDB_API_KEY` is required to satisfy the IMDb/Rotten Tomatoes requirements when the provider has data; addition can still succeed when OMDb is unavailable. No real credentials belong in source, plans, logs or browser code. `.env.example` lists blank names only.
 
-The INSERT uses title, type, release_year, streaming_service, imdb_rating,
-rotten_tomatoes_rating, cast_members, added_by plus new tmdb_id and media_type.
-id and created_at rely on existing defaults; migration ensures the timestamp default.
-The known schema uses a generated bigint id. If the actual id has no generator,
-stop and repair that schema before installation.
-Old rows keep their IDs/metadata and show missing fields as Not available.
-Legacy TV values are assumed to be TV; review existing type spellings before migration.
-To revert application code, deploy the previous commit. Leave additive schema in place;
-do not drop tables/columns as part of code rollback. Database writes/removals require
-snapshot restore or manual repair to reverse.
+At implementation inspection, OMDB_API_KEY was absent in Vercel. TMDB_READ_ACCESS_TOKEN was Preview-scoped. DATABASE_URL had a Production value and a separate RC.2-specific Preview value; **no RC.3-specific DATABASE_URL existed**. Configure RC.3 only with its explicitly approved isolated connection; never copy Production's database URL or the legacy shared POSTGRES_* values.
 
-## Current release readiness
+The new insert requires `db/002_rc3_ratings.sql`. Do not add titles on RC.3 until the migration has been approved/applied to its isolated Preview database and its DATABASE_URL verified. The migration adds only nullable `tmdb_rating`, `tmdb_vote_count`, `ratings_fetched_at` plus constraints; it does not populate existing rows. Old RC.2 readers remain compatible. Read docs/RC3-PLAN.md before any live migration or enrichment. No automatic migration/backfill occurs in build, startup or API GET.
 
-See VALIDATION.md for the November 1, 2026 local preparation results. All 25 automated checks and the production build pass. The GitHub branch release/v1.0.0-rc.2 exists but still matches main at 3d40d25c04a74f042219350bbf905fcdabc4e27a; these changes remain local. Live provider credentials, preview behavior, and mobile acceptance were not checked in this preparation. Security remediation pins Next.js’s PostCSS dependency to 8.5.32 through a scoped npm override. Next.js remains 15.5.28. All 25 checks and the production build pass after remediation; npm audit reports zero vulnerabilities. Keep the override and lockfile together when preparing the release branch.
+Pushing release/v1.0.0-rc.3 may trigger Vercel's existing Git Preview integration. This is not a Production promotion and does not execute SQL scripts. Any automatic Preview is not accepted until the migration/configuration gates are complete. No manual deployment or promotion is included.
 
-Profile loading now has a 10-second request timeout. A failed profile request leaves all controls usable and displays a name-specific error. Users can enter a name and retry Save name; a delayed saved profile never overwrites a manually edited name. Queue and metadata operations still require their own working services.
+## Ratings and errors
 
-The original GitHub file is app/Icon.png (capital I), preserved byte-for-byte. The lowercase app/icon.png spelling does not match the tracked path. Public home-screen icons are additional assets; retain the original file. App Router automatic lowercase icon discovery should not be assumed for this capitalized file.
+IMDb (/10) and Rotten Tomatoes (%) come from OMDb; TMDB (/10 with vote count) is independently labelled. A zero TMDB score with positive votes is valid; zero votes or absent values display Not available. Missing ratings never borrow another provider's score. Ratings are snapshots at insertion; there is no scheduled refresh. OMDb lookups prefer IMDb ID, otherwise canonical title/year/media type. Availability, especially series-level Rotten Tomatoes, must be verified live after credentials are configured.
 
-## Limits
+Server diagnostics use `ratings_lookup` with provider `omdb` and one of: missing_configuration, authentication_failure, rate_limit, timeout, network_error, provider_error, invalid_response, not_found, ratings_unavailable, partial. Successful lookup returns ok. Logs do not include keys, URLs, response bodies, titles or raw exceptions. Existing queue and profile error handling remains generic to clients.
 
-Historical October 30 work inspected live GitHub/Vercel configuration and Neon schema and migrated an isolated Neon branch. The November 1 preparation accessed GitHub read-only, changed only local files, and did not access or change a live database.
-Names are labels, not authentication; group-wide mutation endpoints have no user roles.
-External metadata and subscription availability may be unavailable or change. Provider
-attribution is included in the footer; confirm provider branding/use requirements before
-public distribution. Existing favicon/manifest routes may need reconciliation with these
-public assets if the repository already defines alternatives.
+## Enrichment safety
+
+`npm run enrich:preview -- --output=enrichment-plans/plan.json --limit=25` is dry-run by default; even planning needs separate operational approval and securely injected environment. The CLI pins `neondb` on `preview-v1-rc2` (br-odd-frost-aw9xkps2) and its exact endpoint allowlist, rejects Production, requires `ENRICHMENT_SCOPE` equal to that branch ID and requires both provider credentials for planning. The plan contains only record IDs, full-row fingerprints and proposed missing rating values—not credentials or user names.
+
+Application requires `--apply --plan=... --approve-plan=<reviewed SHA-256>` plus `ENRICHMENT_WRITE_APPROVED=br-odd-frost-aw9xkps2`. These switches are safeguards, not authorization. Plans expire after 24 hours, cap at 100 records, permit rating fields only, fill nulls only, and skip any row changed since planning. Writes are per-row; errors may leave partial completion. Stop and review before retrying. Reapplying an unchanged plan skips already-updated rows. Never use the CLI against a different endpoint without reviewing/changing the allowlist and tests.
+
+## Icons and installation
+
+The exact original is `app/Icon.png` (capital I), SHA-256 `907a6c130c28fec666f623e9e31fc07c43e7d0f41aaa0052acae055ad4b2de04`. It stays unchanged; public PNG/ICO derivatives are referenced explicitly in metadata and manifest. No reliance on automatic discovery of the capitalized file. Apple touch declarations cover 180/167/152 px, favicon covers 16/32/48, manifest covers 192/512. iPhone/iPad: Safari Share → Add to Home Screen; verify correct artwork and standalone launch in A09/A18. Preview authentication and browser caches require actual device checks; do not disable protection automatically. Offline support/service worker is not implemented.
+
+## Known scope and rollback
+
+Names are labels, not authentication; shared removal has no user roles. Existing queue/profile behavior is preserved. For application rollback, restore the RC.2 deployment with the additive columns left in place. For enrichment rollback, use an approved isolated-branch restore/snapshot strategy described in docs/RC3-PLAN.md; do not delete/re-add queue records or reset Production. See VALIDATION.md for actual completed checks and acceptance limits.

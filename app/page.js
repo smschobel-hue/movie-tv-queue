@@ -1,3 +1,4 @@
+/* v1.0.0-rc.3 — 2026-11-02: approved ratings, diagnostics, enrichment and custom icons. */
 /*
  * Movie & TV Queue — v1.0.0-rc.2 — 2026-10-30
  * Release history (newest first):
@@ -179,11 +180,14 @@ export default function Home() {
         const year = field(item, "release_year", "year");
         const cast = field(item, "cast_members", "cast");
         const rt = field(item, "rotten_tomatoes_rating", "rottenTomatoesRating");
+        const tmdbScore = Number(item.tmdb_rating);
+        const tmdbVotes = Number(item.tmdb_vote_count);
         return (
           <article key={item.id || `${item.title}-${index}`} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 16, marginBottom: 14 }}>
             <h3 style={{ marginTop: 0 }}>{item.title}{year ? ` (${year})` : ""}</h3>
             <p><strong>Type:</strong> {showValue(item.type)}</p>
             <p><strong>Streaming (US subscription):</strong> {showValue(field(item, "streaming_service", "streamingService"))}</p>
+            <p><strong>TMDB:</strong> {item.tmdb_rating == null || !Number.isFinite(tmdbScore) || tmdbScore < 0 || tmdbScore > 10 || !Number.isSafeInteger(tmdbVotes) || tmdbVotes <= 0 ? "Not available" : `${tmdbScore.toFixed(1)}/10 · ${tmdbVotes.toLocaleString()} votes`}</p>
             <p><strong>IMDb:</strong> {showValue(field(item, "imdb_rating", "imdbRating"))}</p>
             <p><strong>Rotten Tomatoes:</strong> {rt === null ? "Not available" : `${rt}%`}</p>
             <p><strong>Cast:</strong> {showValue(Array.isArray(cast) ? cast.join(", ") : cast)}</p>
@@ -194,8 +198,8 @@ export default function Home() {
         );
       })}
       {filteredQueue.length > 5 && <button type="button" onClick={() => setShowAll(!showAll)} style={buttonStyle}>{showAll ? "Show Less" : "Show More"}</button>}
-      <footer><p>Movie &amp; TV Queue v1.0.0-rc.2</p>
-        <p>Movie data: TMDB. Streaming availability: JustWatch via TMDB. Ratings: OMDb.</p>
+      <footer><p>Movie &amp; TV Queue v1.0.0-rc.3</p>
+        <p>Movie data: TMDB. Streaming availability: JustWatch via TMDB. IMDb &amp; Rotten Tomatoes ratings: OMDb. TMDB rating: TMDB.</p>
       </footer>
     </main>
   );

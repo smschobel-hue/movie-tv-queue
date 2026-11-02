@@ -45,3 +45,21 @@ test('late profile response does not overwrite typed name; save can retry',async
  assert.match(JSON.stringify(tree.toJSON()),/Name saved/);
  await act(async()=>tree.unmount());
 });
+test('three ratings render independently, including a real TMDB zero',async()=>{
+ const rows=[{id:1,title:'Fixture',imdb_rating:'8.1',rotten_tomatoes_rating:93,tmdb_rating:'7.8',tmdb_vote_count:'1234'}, {id:2,title:'Zero',imdb_rating:null,rotten_tomatoes_rating:null,tmdb_rating:0,tmdb_vote_count:1}];
+ globalThis.fetch=async url=>Response.json(url==='/api/queue'?rows:{name:''});
+ let tree;await act(async()=>{tree=TestRenderer.create(React.createElement(Home));});
+ const articles=tree.root.findAllByType('article');
+ const text=node=>JSON.stringify(node.children.map(c=>typeof c==='string'?c:c.children));
+ const paragraphs=articles[0].findAllByType('p').map(text).join(' ');
+ assert.match(paragraphs,/TMDB/);assert.match(paragraphs,/7\.8\/10/);assert.match(paragraphs,/IMDb/);assert.match(paragraphs,/8\.1/);assert.match(paragraphs,/Rotten Tomatoes/);assert.match(paragraphs,/93%/);
+ assert.match(articles[1].findAllByType('p').map(text).join(' '),/0\.0\/10/);
+ await act(async()=>tree.unmount());
+});
+test('legacy nulls, zero votes and invalid TMDB values display unavailable',async()=>{
+ const rows=[{id:1,title:'Legacy'},{id:2,title:'No votes',tmdb_rating:8,tmdb_vote_count:0},{id:3,title:'Bad value',tmdb_rating:'invalid',tmdb_vote_count:2}];
+ globalThis.fetch=async url=>Response.json(url==='/api/queue'?rows:{name:''});
+ let tree;await act(async()=>{tree=TestRenderer.create(React.createElement(Home));});
+ for(const article of tree.root.findAllByType('article')){const line=article.findAllByType('p').find(p=>p.findAllByType('strong').some(s=>s.children.includes('TMDB:')));assert.ok(line.children.includes('Not available'));}
+ await act(async()=>tree.unmount());
+});

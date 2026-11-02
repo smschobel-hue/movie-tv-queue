@@ -1,3 +1,4 @@
+/* v1.0.0-rc.3 — 2026-11-02: approved ratings, diagnostics, enrichment and custom icons. */
 /*
  * Movie & TV Queue — v1.0.0-rc.2 — 2026-10-30
  * Release history (newest first):
@@ -6,6 +7,7 @@
  * 2026-10-29: Original two-file replacement ZIP; unversioned, no embedded history.
  */
 import { sql } from "../../../lib/db";
+import { omdbRatings, tmdbRatings } from "../../../lib/ratings.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,35 +51,6 @@ async function searchMatches(title) {
     .filter((item) => (item.media_type === "movie" || item.media_type === "tv") && item.id)
     .map(normalizeMatch)
     .slice(0, 12);
-}
-
-async function getOmdbDetails(title, year, type, imdbId) {
-  const key = process.env.OMDB_API_KEY;
-  if (!key) return null;
-  const url = new URL("https://www.omdbapi.com/");
-  url.searchParams.set("apikey", key);
-  if (imdbId) {
-    url.searchParams.set("i", imdbId);
-  } else {
-    url.searchParams.set("t", title);
-    if (year) url.searchParams.set("y", String(year));
-    url.searchParams.set("type", type === "movie" ? "movie" : "series");
-  }
-  try {
-    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(12000) });
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.Response === "True" ? data : null;
-  } catch (error) {
-    console.warn("OMDb lookup unavailable:", error);
-    return null;
-  }
-}
-
-function parseRating(value) {
-  if (!value || value === "N/A") return null;
-  const number = Number.parseFloat(value);
-  return Number.isFinite(number) ? number : null;
 }
 
 export async function GET() {
@@ -129,21 +102,22 @@ export async function POST(request) {
     const streamingService = [...new Set(providers.map((p) => p.provider_name).filter(Boolean))].join(", ") || null;
 
     const imdbId = mediaType === "movie" ? details.imdb_id : details.external_ids?.imdb_id;
-    const omdb = await getOmdbDetails(canonicalTitle, releaseYear, mediaType, imdbId);
-    const imdbRating = parseRating(omdb?.imdbRating);
-    const rtEntry = omdb?.Ratings?.find((r) => r.Source === "Rotten Tomatoes");
-    const rottenTomatoesRating = rtEntry ? parseRating(rtEntry.Value) : null;
+    const { imdbRating, rottenTomatoesRating } = await omdbRatings({ title: canonicalTitle, year: releaseYear, mediaType, imdbId });
+    const { tmdbRating, tmdbVoteCount } = tmdbRatings(details);
+    const ratingsFetchedAt = new Date().toISOString();
 
     // Unique metadata identity enforces duplicate prevention under concurrent requests.
     // Expression index also protects legacy rows with no TMDb identifier.
     const rows = await sql`
       INSERT INTO queue (
         title, type, release_year, streaming_service,
-        imdb_rating, rotten_tomatoes_rating, cast_members, added_by, tmdb_id, media_type
+        imdb_rating, rotten_tomatoes_rating, cast_members, added_by, tmdb_id, media_type,
+        tmdb_rating, tmdb_vote_count, ratings_fetched_at
       ) VALUES (
         ${canonicalTitle}, ${mediaType === "tv" ? "TV" : "Movie"},
         ${releaseYear}, ${streamingService},
-        ${imdbRating}, ${rottenTomatoesRating}, ${castMembers}, ${addedBy}, ${tmdbId}, ${mediaType}
+        ${imdbRating}, ${rottenTomatoesRating}, ${castMembers}, ${addedBy}, ${tmdbId}, ${mediaType},
+        ${tmdbRating}, ${tmdbVoteCount}, ${ratingsFetchedAt}
       ) ON CONFLICT DO NOTHING RETURNING *
     `;
     if (!rows.length) return errorResponse("This title is already in the queue", 409);

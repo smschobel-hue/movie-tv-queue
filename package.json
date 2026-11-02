@@ -1,12 +1,14 @@
 {
   "name": "movie-tv-queue",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-vm-modules tests/api.test.mjs && node --experimental-vm-modules tests/profile.test.mjs && node tests/db.test.mjs && node --test tests/profile-loading.test.mjs"
+    "test": "node --experimental-vm-modules tests/api.test.mjs && node --experimental-vm-modules tests/profile.test.mjs && node tests/db.test.mjs && node --test tests/profile-loading.test.mjs && node --test tests/ratings.test.mjs tests/enrichment.test.mjs tests/icons.test.mjs tests/rc3-db.test.mjs",
+    "icons:generate": "node scripts/generate-icons.mjs",
+    "enrich:preview": "node scripts/enrich-preview.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -16,7 +18,8 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.14",
-    "react-test-renderer": "19.3.1"
+    "react-test-renderer": "19.3.1",
+    "sharp": "0.35.5"
   },
   "overrides": {
     "next": {

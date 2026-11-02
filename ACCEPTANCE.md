@@ -22,3 +22,16 @@ Do not mark a requirement accepted solely from the mocked tests.
 | A14 | Reload and revisit later: entries remain in creation order. No watched controls exist. Only confirmed Remove deletes a row. | FR-008,022; FR-009 withdrawn |
 
 | A15 | Make /api/profile reject, return 500, malformed JSON, or time out. Name entry and queue controls remain enabled. Enter name and retry Save name after recovery. Delay profile success while typing: manual name is preserved. | Profile outage regression |
+
+## RC.3 additions — November 2, 2026
+
+Preserve A01–A15. User-confirmed RC.2 partial passes: A02 name persistence, A12/A14 queue persistence, A03 TMDB search/multiple-series addition, A05/A14 LIFO ordering. Second-device/cookie-reset, five/all, duplicates, deletion, saved-search and full mobile coverage are not accepted by implication. Run mutating acceptance only on approved disposable fixtures after the Preview gates.
+
+| Test | Steps / expected result | Requirements / record |
+|---|---|---|
+| A16 | Valid movie and TV OMDb identities yield independent stored IMDb/RT values matching provider output. Missing/invalid key, quota, timeout, network, malformed response, no result and individual missing ratings generate distinct sanitized diagnostics. Optional ratings failure does not block addition. Never log secrets. | FR-014/015/020, TR-007/008; RC2-DEF-001/002 |
+| A17 | After separate scope approval, generate bounded dry-run plan, inspect IDs/patches and digest; approve apply separately. Null-only changes preserve ID, created_at, added_by and all old metadata. Changed records skip, retries are safe, wrong host/production/expired/tampered plans fail. Reconcile partial completion and validate rollback readiness. | FR-004/014/015/022; RC2-GAP-001 |
+| A18 | Original icon hash matches immutable baseline. Declared favicon/Apple/manifest URLs serve the custom derivatives with correct status/type/size in authorized context. Verify Safari tab/Favorites and fresh Home Screen install/standalone launch on iPhone and iPad; account for auth and caching without disabling protection. | TR-005/006/011; RC2-DEF-003 |
+| A19 | TMDB score/count persist independently from IMDb/RT. UI labels TMDB x.x/10 plus votes. Test positive votes, zero score, zero votes, null/legacy values, bad provider numbers, and additive migration rerun/data preservation. Existing rows stay null until authorized enrichment. | FR-023, TR-002; RC2-ENH-001 |
+
+Prioritize remaining A05 (>5 Show More/Less), A06 sequential/concurrent duplicate and A08 cancel/confirm shared deletion checks before release acceptance. No live tests or production release are approved by this file.

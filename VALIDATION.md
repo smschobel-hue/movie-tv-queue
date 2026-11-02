@@ -1,30 +1,28 @@
-# Validation — v1.0.0-rc.2
+# Validation — v1.0.0-rc.3, November 2, 2026
 
-## Local preparation — November 1, 2026
+## Local results
 
-- Runtime: Node.js 22.23.4 (official darwin-arm64 archive, SHA-256 verified), npm 10.9.9.
-- Dependencies installed locally; updated package-lock.json records the exact install. The lockfile resolves Next.js 15.5.28 and React/React DOM 19.3.1 within the unchanged runtime dependency ranges.
-- Added development dependency @electric-sql/pglite 0.5.14. This is embedded PostgreSQL, not SQLite; database tests use only in-memory instances and no DATABASE_URL.
-- Added react-test-renderer 19.3.1 (pinned to match installed React) for component regressions and an npm test command.
-- npm test: PASS, 25 checks (11 queue API, 4 profile API, 6 embedded PostgreSQL, 4 component regressions).
-- Component regressions cover rejected network requests, HTTP failure, invalid JSON, retrying Save name after each failure, and preserving manual input when a delayed profile response arrives.
-- npm run build: PASS on Next.js 15.5.28; page and both API routes compile. Database/provider credentials removed from build environment; no live database used.
-- app/Icon.png preserved from GitHub commit 3d40d25c04a74f042219350bbf905fcdabc4e27a; Git blob SHA-1 verified as 3675664b9fee06794fa604963deb12f9c01936c2.
-- GitHub release/v1.0.0-rc.2 exists and matches main at the above commit. No commit, push, merge, or deployment performed.
-- SHA256SUMS.txt regenerated for deliverable source, assets, tests, and documentation (excluding itself, installed dependencies, and build output).
+- Baseline: RC.2 001e6829e3eb136b7740490f33377fba6cf1338f. Working branch release/v1.0.0-rc.3 starts from this exact commit.
+- Runtime Node.js 22.23.4 / npm 10.9.9. Next.js remains 15.5.28; React/React DOM 19.3.1. Scoped Next.js PostCSS override remains 8.5.32. sharp 0.35.5 is an explicit development dependency for deterministic icon generation.
+- npm test: PASS, **50 checks**: 11 queue API, 4 profile API, 6 RC.2 embedded PostgreSQL, 6 component tests (including 4 original profile recovery regressions), 15 ratings/provider diagnostics, 4 enrichment safeguards/preservation, 3 icon, 1 RC.3 migration. The original 25 checks remain passing.
+- npm run build: PASS. Compiles home page and both APIs with DATABASE_URL, OMDB_API_KEY and TMDB_READ_ACCESS_TOKEN removed from the build environment.
+- npm audit: PASS, zero vulnerabilities at every severity.
+- Local production server: home page and all 9 declared manifest/icon URLs return 200 with correct HTML/manifest/PNG/ICO content types; static response bytes equal the generated files. No API mutation or live database call was made by this smoke check.
+- Generated HTML contains the expected favicon and Apple touch links with sizes/types. Browser page bundle contains no OMDB_API_KEY or TMDB_READ_ACCESS_TOKEN references.
+- Original app/Icon.png SHA-256 matches RC.2 exactly: 907a6c130c28fec666f623e9e31fc07c43e7d0f41aaa0052acae055ad4b2de04. Pixel-level derivative checks and 16/32/48 ICO entry decoding pass. Apple derivative visually inspected.
+- Secret scan and upload SHA-256 manifest exclude dependencies, .next, .git, enrichment plans/receipts and real environment files. The only environment-style deliverable is .env.example, with empty assignments. Synthetic test credentials are clearly fixture strings and are not live secrets.
 
-## Remaining risks and acceptance
+## What is not accepted yet
 
-- npm audit after security remediation: PASS, zero vulnerabilities at every severity. A scoped package.json override sets next -> postcss to exactly 8.5.32; package-lock.json is regenerated. This resolves the prior high PostCSS and inherited moderate Next.js findings without changing Next.js 15.5.28. The registry lists 15.5.28 as the newest stable Next.js 15 release. No major framework upgrade was applied.
-- All 25 automated checks and the production build were rerun and passed with the override. npm ls confirms next@15.5.28 -> postcss@8.5.32 (overridden), without dependency errors.
-- The override substitutes Next.js’s pinned transitive dependency. Compatibility is verified for this candidate’s automated tests/build; future framework upgrades and CSS changes should retest it. Live browser/mobile acceptance remains pending.
-- React test-renderer is deprecated; tests currently pass. API mocks use experimental Node VM modules and emit the corresponding warning.
-- Unit/component tests and embedded PostgreSQL checks do not validate live Neon, TMDB, OMDb, deployed cookies/origin handling, or actual mobile/browser behavior.
-- No provider credentials were added or checked. DATABASE_URL and TMDB_READ_ACCESS_TOKEN are required for live use; OMDB_API_KEY is optional for ratings.
-- Names remain labels, not authentication. Shared mutations have no user roles.
-- The additive database migration must be tested against an isolated copy of the intended schema. Existing duplicate rows can prevent its unique indexes from being created; no duplicates are automatically deleted.
-- Run ACCEPTANCE.md on an isolated database and preview before production. Production database and application were untouched.
+- No live schema migration or enrichment was executed. Migration and update SQL were tested only against in-memory PGlite fixtures. See docs/RC3-PLAN.md for target, safeguards, rollback and verification approval gates.
+- No live OMDb call was made; OMDB_API_KEY was missing at the Vercel metadata inspection. Provider availability, including series-level Rotten Tomatoes, remains unverified.
+- No RC.3-specific DATABASE_URL was configured. RC.2 has a branch-specific isolated connection; the production value and shared legacy database variables must not be copied blindly. Configure only after the intended RC.3 test target is approved.
+- No Vercel environment variable or Production setting was changed. No manual deployment or promotion initiated. A release-branch push may automatically create a Git Preview; inspect its status after push and do not confuse build readiness with database/API acceptance.
+- The new insert requires approved migration 002 before adding titles on Preview. Missing schema/configuration is a deployment prerequisite, not a reason to run scripts automatically.
+- Real Safari/iPhone/iPad Home Screen acceptance, live provider/error cases and controlled enrichment remain pending. Existing Show More/Less, duplicate and manual-delete manual acceptance cases also remain open.
+- React test-renderer emits a deprecation warning and Node VM modules emit an experimental warning. These are tooling notices, not npm audit vulnerabilities.
+- Enrichment is deliberately per-row; a connection error may leave partial completion. Changed rows skip via full-row fingerprints. Review before/after evidence and coordinate test writers before approving rollback or retries.
 
-## Historical context — October 30
+## Record disposition
 
-The previous report recorded local passing checks, an isolated Neon migration, GitHub branch creation blocked by 403, and no preview deployment. Branch existence was subsequently verified November 1; the old 403 is not a current branch-status claim. Historical credential/configuration observations have not been revalidated.
+RC2-DEF-001/002/003, RC2-GAP-001 and RC2-ENH-001 are implemented in source and covered locally, but not closed as live acceptance. No issue IDs were renumbered. FR-023 is the new independent TMDB-rating requirement authorized by the RC.3 request. Original RC.2 user-confirmed passes remain documented without expanding their scope.
