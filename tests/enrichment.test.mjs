@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PGlite } from '@electric-sql/pglite';
 import { assertPreview, PREVIEW_BRANCH, digest, validatePlan, missingRatings, UPDATE_SQL, updateParameters } from '../lib/enrichment.mjs';
-const env={DATABASE_URL:'postgresql://fixture:fixture@ep-purple-fog-awwknv2v.c-12.us-east-1.aws.neon.tech/neondb',ENRICHMENT_SCOPE:PREVIEW_BRANCH,ENRICHMENT_WRITE_APPROVED:PREVIEW_BRANCH};
+const env={DATABASE_URL:'postgresql://fixture:fixture@ep-twilight-moon-awbt5uj7.c-12.us-east-1.aws.neon.tech/neondb',ENRICHMENT_SCOPE:PREVIEW_BRANCH,ENRICHMENT_WRITE_APPROVED:PREVIEW_BRANCH};
 test('scope blocks production, wrong database, arbitrary hosts and missing acknowledgement',()=>{
  assertPreview(env);
  for(const change of [{VERCEL_ENV:'production'},{ENRICHMENT_SCOPE:''},{DATABASE_URL:'postgresql://fixture:fixture@production.example/neondb'},{DATABASE_URL:env.DATABASE_URL.replace('/neondb','/postgres')}])assert.throws(()=>assertPreview({...env,...change}));
